@@ -1,0 +1,40 @@
+#include <windows.h>
+#include "version.h"
+
+#ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+// Not used in resource, but defined in code; present here for SDK parity comments.
+#define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
+#endif
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION VER_FILE_VERSION
+ PRODUCTVERSION VER_PRODUCT_VERSION
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0" // Language: U.S. English, Codepage: Unicode
+        BEGIN
+            VALUE "CompanyName",      VER_COMPANYNAME_STR
+            VALUE "FileDescription",  VER_FILEDESCRIPTION_STR
+            VALUE "FileVersion",      VER_FILE_VERSION_STR
+            VALUE "InternalName",     VER_INTERNALNAME_STR
+            VALUE "OriginalFilename", VER_ORIGINALFILENAME_STR
+            VALUE "ProductName",      VER_PRODUCTNAME_STR
+            VALUE "ProductVersion",   VER_PRODUCT_VERSION_STR
+            VALUE "BuildID",          BUILD_ID_A
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END
