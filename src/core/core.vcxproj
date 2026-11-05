@@ -38,6 +38,7 @@
     <ClCompile Include="strobe_clock.cpp" />
     <ClCompile Include="settings.cpp" />
     <ClCompile Include="image_compose.cpp" />
+    <ClCompile Include="monitors.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

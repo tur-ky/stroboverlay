@@ -45,6 +45,9 @@ bool IsValidProfileName(const std::wstring& name);
 
 bool ParseHotkey(const std::wstring& text, Hotkey& out);
 
+// Durations for these settings, using the monitor's rate when refresh is auto.
+Durations StrobeDurations(const StrobeSettings& settings, double monitorHz);
+
 // Turns off any fill or mask whose file is missing, keeping the saved path so
 // restoring the file works. Returns a warning naming the file, or empty.
 std::wstring ProbeMissingAssets(const std::wstring& exeDir, StrobeSettings& settings);

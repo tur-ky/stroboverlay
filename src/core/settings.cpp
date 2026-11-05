@@ -218,3 +218,9 @@ std::wstring ProbeMissingAssets(const std::wstring& exeDir, StrobeSettings& sett
     }
     return warning;
 }
+
+Durations StrobeDurations(const StrobeSettings& settings, double monitorHz) {
+    TimingSettings timing = settings.timing;
+    if (settings.refreshAuto) timing.refreshHz = monitorHz;
+    return ResolveDurations(timing);
+}
