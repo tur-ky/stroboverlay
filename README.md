@@ -1,51 +1,31 @@
-﻿# stroboverlay
+# stroboverlay
 
-A lightweight, high-precision Win32 stroboscopic overlay utility for aim training on kovaaks/aimlabs.
+A stroboscopic vision-training overlay for Windows. It flashes a layer over whatever is on screen, with a menu that stays hidden until you call it.
 
-`stroboverlay` creates a click-through, layered top-most window that toggles between visible (black) and invisible states based on precise frame counts. It is designed for visual persistence testing and stroboscopic effects on high-refresh-rate displays, utilizing high-resolution waitable timers for sub-millisecond accuracy.
+## Use
 
-## Features
+| Hotkey | Does |
+| --- | --- |
+| `Ctrl+Shift+1` | Open or close the menu |
+| `Ctrl+Shift+3` | Start or stop the strobe |
+| `Ctrl+Shift+5` | Quit |
 
-* **High-Precision Timing:** Uses Windows High-Resolution Waitable Timers to minimize drift.
-* **Zero Interference:** The overlay is transparent to mouse clicks (WS_EX_TRANSPARENT), allowing normal interaction with underlying applications.
-* **Configurable Strobing:** Define "On" and "Off" durations in frames relative to a target refresh rate.
-* **Performance Logging:** Automatically logs timing drift and jitter to `.csv` files in the `logs/` directory.
-* **Global Hotkeys:** Control the overlay from any application.
-* **Native Win32:** No heavy dependencies; built with standard Windows APIs.
+`Esc` also closes the menu, and the menu has a Quit button. Hotkeys can be changed by hand in `config.ini`.
 
-## Installation & Build
+The overlay is an ordinary always-on-top window, so it shows over games in borderless, not exclusive fullscreen. Opening the menu takes focus like alt-tab, and closing it gives focus back.
 
-### Requirements
-* Windows 10/11
-* Visual Studio 2022 (Build Tools or Professional) for compiling.
+## Menu
 
-### Building from Source
-1.  Clone the repository.
-2.  Run the included build script:
-    ```cmd
-    build.bat
-    ```
-3.  The compiled binary will be located in `bin/Release/stroboverlay.exe`.
+- **Timing:** how long the strobe is drawn (`Strobe`) and how long the game shows through (`Game visible`), in milliseconds or frames.
+- **Appearance:** draw a color or an image on each strobe.
+- **Mask:** limit where the strobe draws. White draws it, black leaves the game visible, grey is partial. Images stretch to fit the monitor.
+- **Profiles:** save and load timing, appearance and mask together.
+- **Display:** pick which monitor gets the overlay.
 
-## Configuration
+Imported images, masks and profiles live in `images\`, `masks\` and `profiles\` beside the exe.
 
-Settings are managed via `config.ini` located in the same directory as the executable.
+## Build
 
-```ini
-[overlay]
-; Duration the overlay is visible (black screen) in frames
-on_frames=50
+Needs Visual Studio 2022 with the C++ tools and a Windows 10 or 11 SDK. Run `build.bat`, which produces `bin\Release\stroboverlay.exe`. Tests are in `bin\Release\core_tests.exe`.
 
-; Duration the overlay is invisible in frames
-off_frames=50
-
-; Your monitor's refresh rate (used to calculate frame timings)
-refresh_hz=400
-
-[hotkeys]
-; Global hotkeys. Format: MODIFIER+KEY
-; Modifiers: CTRL, SHIFT, ALT, WIN
-toggle=CTRL+SHIFT+3
-panic=CTRL+SHIFT+0
-
-showgui=CTRL+SHIFT+B
+Dear ImGui is vendored in `third_party\imgui`, under its MIT license.
