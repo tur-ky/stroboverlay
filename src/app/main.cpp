@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "app/asset_store.h"
 #include "app/dcomp_renderer.h"
 #include "app/menu_host.h"
 #include "app/overlay_window.h"
@@ -43,6 +44,9 @@ private:
     void DrawMenuFrame();
     void HandleMessage(const MSG& msg);
     void Save();
+    void Recompose();
+    void RefreshAssets();
+    void ImportInto(const wchar_t* subdir, std::wstring& target);
 
     std::wstring exeDir_;
     AppSettings settings_;
@@ -52,6 +56,9 @@ private:
     OverlayRenderer renderer_;
     StrobeWorker worker_;
     MenuHost menu_;
+    AssetStore assets_;
+    std::vector<std::wstring> images_, masks_;
+    std::wstring warning_;
     bool menuOpen_ = false;
     bool quit_ = false;
     HWND previousForeground_ = nullptr;
@@ -72,7 +79,9 @@ bool App::Init(HINSTANCE instance) {
     };
     if (!window_.Create(instance, rc, handler)) return false;
     if (!renderer_.Init(window_.Handle(), w, h)) return false;
-    renderer_.SetStrobeBitmap(ComposeStrobe(settings_.strobe.colorRgb, nullptr, nullptr, false, w, h));
+    assets_.Init(exeDir_, renderer_.Device());
+    RefreshAssets();
+    Recompose();
     if (!menu_.Init(window_.Handle(), &renderer_, GetDpiForWindow(window_.Handle()) / 96.0f)) {
         return false;
     }
@@ -104,6 +113,7 @@ void App::OpenMenu() {
     if (menuOpen_) return;
     previousForeground_ = GetForegroundWindow();
     menuOpen_ = true;
+    RefreshAssets();
     DrawMenuFrame();
     window_.SetMenuInteractive(true);
     UpdateVisibility();
@@ -130,13 +140,46 @@ void App::DrawMenuFrame() {
     ctx.monitors = monitors_;
     ctx.dpiScale = GetDpiForWindow(window_.Handle()) / 96.0f;
     ctx.detectedHz = monitor_.refreshHz;
+    ctx.images = images_;
+    ctx.masks = masks_;
+    ctx.warning = warning_;
+    ctx.thumbnail = [this](const std::wstring& file) -> void* { return assets_.Thumbnail(file); };
 
+    const StrobeSettings before = settings_.strobe;
     MenuActions actions = menu_.Frame(ctx);
+    if (actions.importImage) {
+        ImportInto(L"images", settings_.strobe.imageFile);
+        actions.strobeSettingsChanged = true;
+    }
+    if (actions.importMask) {
+        ImportInto(L"masks", settings_.strobe.maskFile);
+        actions.strobeSettingsChanged = true;
+    }
     if (actions.strobeSettingsChanged) {
         worker_.SetDurations(StrobeDurations(settings_.strobe, monitor_.refreshHz));
+        if (NeedsRecompose(before, settings_.strobe)) Recompose();
     }
     if (actions.toggleStrobe) ToggleStrobe();
     if (actions.closeMenu) CloseMenu();
+}
+
+void App::Recompose() {
+    const RECT& rc = monitor_.rect;
+    renderer_.SetStrobeBitmap(
+        assets_.BuildStrobe(settings_.strobe, rc.right - rc.left, rc.bottom - rc.top, warning_));
+}
+
+void App::RefreshAssets() {
+    images_ = assets_.List(L"images");
+    masks_ = assets_.List(L"masks");
+}
+
+void App::ImportInto(const wchar_t* subdir, std::wstring& target) {
+    std::wstring relative;
+    if (assets_.Import(window_.Handle(), subdir, relative)) {
+        target = relative;
+        RefreshAssets();
+    }
 }
 
 void App::HandleMessage(const MSG& msg) {

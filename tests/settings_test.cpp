@@ -214,3 +214,37 @@ TEST(present_assets_stay_enabled) {
     CHECK(ProbeMissingAssets(dir, s).empty());
     CHECK(s.fill == FillKind::Image);
 }
+
+TEST(recompose_only_on_look_changes) {
+    StrobeSettings a, b = a;
+    b.timing.onMs = 5;
+    CHECK(!NeedsRecompose(a, b));
+    b = a;
+    b.colorRgb = 0xFFFFFF;
+    CHECK(NeedsRecompose(a, b));
+    b = a;
+    b.fill = FillKind::Image;
+    CHECK(NeedsRecompose(a, b));
+    b = a;
+    b.imageFile = L"images\a.png";
+    CHECK(NeedsRecompose(a, b));
+    b = a;
+    b.maskFile = L"masks\a.png";
+    CHECK(NeedsRecompose(a, b));
+    b = a;
+    b.maskEnabled = true;
+    CHECK(NeedsRecompose(a, b));
+    b = a;
+    b.maskInvert = true;
+    CHECK(NeedsRecompose(a, b));
+}
+
+TEST(no_file_chosen_falls_back_without_a_warning) {
+    std::wstring dir = MakeTempDir();
+    StrobeSettings s;
+    s.fill = FillKind::Image;
+    s.maskEnabled = true;
+    CHECK(ProbeMissingAssets(dir, s).empty());
+    CHECK(s.fill == FillKind::Color);
+    CHECK(!s.maskEnabled);
+}

@@ -208,12 +208,14 @@ static bool FileExists(const std::wstring& path) {
 std::wstring ProbeMissingAssets(const std::wstring& exeDir, StrobeSettings& settings) {
     std::wstring warning;
     if (settings.fill == FillKind::Image && !FileExists(exeDir + settings.imageFile)) {
-        warning = L"Missing image: " + settings.imageFile;
+        if (!settings.imageFile.empty()) warning = L"Missing image: " + settings.imageFile;
         settings.fill = FillKind::Color;
     }
     if (settings.maskEnabled && !FileExists(exeDir + settings.maskFile)) {
-        if (!warning.empty()) warning += L". ";
-        warning += L"Missing mask: " + settings.maskFile;
+        if (!settings.maskFile.empty()) {
+            if (!warning.empty()) warning += L". ";
+            warning += L"Missing mask: " + settings.maskFile;
+        }
         settings.maskEnabled = false;
     }
     return warning;
@@ -223,4 +225,10 @@ Durations StrobeDurations(const StrobeSettings& settings, double monitorHz) {
     TimingSettings timing = settings.timing;
     if (settings.refreshAuto) timing.refreshHz = monitorHz;
     return ResolveDurations(timing);
+}
+
+bool NeedsRecompose(const StrobeSettings& before, const StrobeSettings& after) {
+    return before.fill != after.fill || before.colorRgb != after.colorRgb ||
+           before.imageFile != after.imageFile || before.maskEnabled != after.maskEnabled ||
+           before.maskFile != after.maskFile || before.maskInvert != after.maskInvert;
 }

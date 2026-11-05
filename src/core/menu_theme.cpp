@@ -57,6 +57,7 @@ void ApplyMenuTheme(float dpiScale) {
     style.GrabRounding = 4.0f;
     style.PopupRounding = 4.0f;
     style.WindowBorderSize = 1.0f;
+    style.FrameBorderSize = 1.0f;
     style.ChildBorderSize = 0.0f;
     style.WindowPadding = ImVec2(0.0f, 0.0f);
     style.FramePadding = ImVec2(8.0f, 5.0f);

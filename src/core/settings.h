@@ -51,3 +51,6 @@ Durations StrobeDurations(const StrobeSettings& settings, double monitorHz);
 // Turns off any fill or mask whose file is missing, keeping the saved path so
 // restoring the file works. Returns a warning naming the file, or empty.
 std::wstring ProbeMissingAssets(const std::wstring& exeDir, StrobeSettings& settings);
+
+// True when a change means the strobe bitmap has to be rebuilt.
+bool NeedsRecompose(const StrobeSettings& before, const StrobeSettings& after);
