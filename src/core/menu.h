@@ -16,6 +16,7 @@ struct MenuContext {
     std::wstring warning;
     float dpiScale = 1.0f;
     double detectedHz = 60.0;
+    std::wstring activeMonitor;
     // Returns an ImTextureID for an asset, so core stays free of graphics types.
     std::function<void*(const std::wstring& relativePath)> thumbnail;
 };
@@ -34,6 +35,7 @@ public:
     std::wstring pending;
 };
 
+float MenuScaleForDpi(unsigned dpi);
 void ApplyMenuTheme(float dpiScale);
 void LoadMenuFonts(float dpiScale);
 MenuActions DrawMenu(MenuContext& ctx, MenuSection& section);

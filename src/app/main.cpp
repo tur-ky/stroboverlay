@@ -2,6 +2,7 @@
 
 #include <dwmapi.h>
 #include <objbase.h>
+#include <shellapi.h>
 #include <windows.h>
 
 #include <string>
@@ -10,10 +11,12 @@
 #include "app/asset_store.h"
 #include "app/dcomp_renderer.h"
 #include "app/menu_host.h"
+#include "app/notify.h"
 #include "app/overlay_window.h"
 #include "app/strobe_worker.h"
 #include "core/image_compose.h"
 #include "core/monitors.h"
+#include "core/process_probe.h"
 #include "core/settings.h"
 #include "version.h"
 
@@ -49,6 +52,11 @@ private:
     void HandleProfiles(const MenuActions& actions);
     std::wstring ProfilePath(const std::wstring& name) const;
     void ImportInto(const wchar_t* subdir, std::wstring& target);
+    void ApplyMonitor();
+    void RefreshMonitors();
+    void RegisterHotkeys();
+    void RecoverDevice();
+    bool HandleWindowMessage(UINT msg, WPARAM wp, LPARAM lp, LRESULT& result);
 
     std::wstring exeDir_;
     AppSettings settings_;
@@ -60,7 +68,7 @@ private:
     MenuHost menu_;
     AssetStore assets_;
     std::vector<std::wstring> images_, masks_, profiles_;
-    std::wstring warning_;
+    std::wstring warning_, displayWarning_, hotkeyWarning_;
     bool menuOpen_ = false;
     bool quit_ = false;
     HWND previousForeground_ = nullptr;
@@ -72,19 +80,22 @@ bool App::Init(HINSTANCE instance) {
     monitors_ = EnumerateMonitors();
     if (monitors_.empty()) return false;
     monitor_ = PickMonitor(monitors_, settings_.monitor);
+    if (!settings_.monitor.empty() && monitor_.device != settings_.monitor) {
+        displayWarning_ = L"Saved monitor isn't connected, using the primary.";
+    }
 
     const RECT& rc = monitor_.rect;
     const int w = rc.right - rc.left;
     const int h = rc.bottom - rc.top;
     auto handler = [this](UINT msg, WPARAM wp, LPARAM lp, LRESULT& result) {
-        return menu_.HandleMessage(window_.Handle(), msg, wp, lp, result);
+        return HandleWindowMessage(msg, wp, lp, result);
     };
     if (!window_.Create(instance, rc, handler)) return false;
     if (!renderer_.Init(window_.Handle(), w, h)) return false;
     assets_.Init(exeDir_, renderer_.Device());
     RefreshAssets();
     Recompose();
-    if (!menu_.Init(window_.Handle(), &renderer_, GetDpiForWindow(window_.Handle()) / 96.0f)) {
+    if (!menu_.Init(window_.Handle(), &renderer_, MenuScaleForDpi(GetDpiForWindow(window_.Handle())))) {
         return false;
     }
 
@@ -93,9 +104,7 @@ bool App::Init(HINSTANCE instance) {
     }
     worker_.SetDurations(StrobeDurations(settings_.strobe, monitor_.refreshHz));
 
-    RegisterHotKey(nullptr, kToggle, settings_.toggle.mods | MOD_NOREPEAT, settings_.toggle.vk);
-    RegisterHotKey(nullptr, kPanic, settings_.panic.mods | MOD_NOREPEAT, settings_.panic.vk);
-    RegisterHotKey(nullptr, kShowGui, settings_.showGui.mods | MOD_NOREPEAT, settings_.showGui.vk);
+    RegisterHotkeys();
     OpenMenu();
     return true;
 }
@@ -104,8 +113,24 @@ void App::UpdateVisibility() {
     window_.SetVisible(worker_.Running() || menuOpen_);
 }
 
+void App::RegisterHotkeys() {
+    const auto reg = [this](int id, const Hotkey& key) {
+        return RegisterHotKey(nullptr, id, key.mods | MOD_NOREPEAT, key.vk) != 0;
+    };
+    const bool toggleOk = reg(kToggle, settings_.toggle);
+    const bool panicOk = reg(kPanic, settings_.panic);
+    const bool showOk = reg(kShowGui, settings_.showGui);
+    if (toggleOk && panicOk && showOk) return;
+    hotkeyWarning_ = L"A hotkey is in use by another app. Change it in config.ini.";
+    ShowDesktopNotice(window_.Handle(), L"Stroboverlay", hotkeyWarning_.c_str());
+}
+
 void App::ToggleStrobe() {
     bool next = !worker_.Running();
+    if (next && IsProcessRunning({L"faceitclient.exe", L"faceitservice.exe"})) {
+        ShowDesktopNotice(window_.Handle(), L"Stroboverlay",
+                          L"FACEIT is running, so the overlay may not show.");
+    }
     worker_.SetRunning(next);
     if (!next) DwmFlush();
     UpdateVisibility();
@@ -136,16 +161,22 @@ void App::CloseMenu() {
 }
 
 void App::DrawMenuFrame() {
+    if (renderer_.DeviceLost()) RecoverDevice();
     MenuContext ctx;
     ctx.settings = &settings_;
     ctx.running = worker_.Running();
     ctx.monitors = monitors_;
-    ctx.dpiScale = GetDpiForWindow(window_.Handle()) / 96.0f;
+    ctx.dpiScale = MenuScaleForDpi(GetDpiForWindow(window_.Handle()));
     ctx.detectedHz = monitor_.refreshHz;
+    ctx.activeMonitor = monitor_.device;
     ctx.images = images_;
     ctx.masks = masks_;
     ctx.profiles = profiles_;
-    ctx.warning = warning_;
+    for (const std::wstring* text : {&warning_, &displayWarning_, &hotkeyWarning_}) {
+        if (text->empty()) continue;
+        if (!ctx.warning.empty()) ctx.warning += L" ";
+        ctx.warning += *text;
+    }
     ctx.thumbnail = [this](const std::wstring& file) -> void* { return assets_.Thumbnail(file); };
 
     const StrobeSettings before = settings_.strobe;
@@ -163,8 +194,86 @@ void App::DrawMenuFrame() {
         if (NeedsRecompose(before, settings_.strobe)) Recompose();
     }
     HandleProfiles(actions);
+    if (!actions.selectMonitor.empty()) {
+        settings_.monitor = actions.selectMonitor;
+        RefreshMonitors();
+    }
     if (actions.toggleStrobe) ToggleStrobe();
     if (actions.closeMenu) CloseMenu();
+}
+
+void App::ApplyMonitor() {
+    const RECT& rc = monitor_.rect;
+    menu_.ReleaseTargets();
+    window_.Place(rc);
+    renderer_.Resize(rc.right - rc.left, rc.bottom - rc.top);
+    Recompose();
+    worker_.SetDurations(StrobeDurations(settings_.strobe, monitor_.refreshHz));
+    menu_.SetDpiScale(MenuScaleForDpi(GetDpiForWindow(window_.Handle())));
+}
+
+void App::RefreshMonitors() {
+    std::vector<MonitorInfo> monitors = EnumerateMonitors();
+    if (monitors.empty()) return;
+    monitors_ = std::move(monitors);
+
+    MonitorInfo next = PickMonitor(monitors_, settings_.monitor);
+    const bool missing = !settings_.monitor.empty() && next.device != settings_.monitor;
+    displayWarning_ = missing ? L"Saved monitor isn't connected, using the primary." : L"";
+
+    const RECT& a = monitor_.rect;
+    const RECT& b = next.rect;
+    const bool moved = next.device != monitor_.device || a.left != b.left || a.top != b.top ||
+                       a.right != b.right || a.bottom != b.bottom;
+    monitor_ = next;
+    if (moved) {
+        ApplyMonitor();
+    } else {
+        worker_.SetDurations(StrobeDurations(settings_.strobe, monitor_.refreshHz));
+    }
+}
+
+void App::RecoverDevice() {
+    const bool wasRunning = worker_.Running();
+    worker_.SetRunning(false);
+    DwmFlush();
+    menu_.ReleaseTargets();
+    menu_.Shutdown();
+    renderer_.Reset();
+
+    const RECT& rc = monitor_.rect;
+    const bool ok = renderer_.Init(window_.Handle(), rc.right - rc.left, rc.bottom - rc.top) &&
+                    menu_.Init(window_.Handle(), &renderer_,
+                               MenuScaleForDpi(GetDpiForWindow(window_.Handle())));
+    if (!ok) {
+        ShowDesktopNotice(window_.Handle(), L"Stroboverlay",
+                          L"The graphics device failed, so the strobe has stopped.");
+        quit_ = true;
+        return;
+    }
+    assets_.Init(exeDir_, renderer_.Device());
+    Recompose();
+    if (menuOpen_) renderer_.ShowMenuLayer(true);
+    worker_.SetRunning(wasRunning);
+}
+
+bool App::HandleWindowMessage(UINT msg, WPARAM wp, LPARAM lp, LRESULT& result) {
+    switch (msg) {
+        case WM_DISPLAYCHANGE:
+            RefreshMonitors();
+            return true;
+        case WM_DPICHANGED:
+            menu_.SetDpiScale(MenuScaleForDpi(HIWORD(wp)));
+            return true;
+        case kNoticeMessage:
+            if (LOWORD(lp) == NIN_BALLOONHIDE || LOWORD(lp) == NIN_BALLOONTIMEOUT ||
+                LOWORD(lp) == NIN_BALLOONUSERCLICK) {
+                RemoveDesktopNotice(window_.Handle());
+            }
+            return true;
+        default:
+            return menu_.HandleMessage(window_.Handle(), msg, wp, lp, result);
+    }
 }
 
 void App::Recompose() {
@@ -256,6 +365,7 @@ void App::Shutdown() {
     UnregisterHotKey(nullptr, kPanic);
     UnregisterHotKey(nullptr, kShowGui);
     menu_.Shutdown();
+    RemoveDesktopNotice(window_.Handle());
     window_.Destroy();
 }
 

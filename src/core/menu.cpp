@@ -278,6 +278,19 @@ void DrawProfiles(MenuContext& ctx, MenuActions& actions) {
     if (nameRejected) Hint("Use a name without \\ / : * ? \" < > |");
 }
 
+void DrawDisplay(MenuContext& ctx, MenuActions& actions) {
+    Label("Show the overlay on");
+    for (const MonitorInfo& m : ctx.monitors) {
+        char text[200];
+        snprintf(text, sizeof(text), "%s  %dx%d  %.0f Hz##%s", ToUtf8(m.label).c_str(),
+                 static_cast<int>(m.rect.right - m.rect.left),
+                 static_cast<int>(m.rect.bottom - m.rect.top), m.refreshHz,
+                 ToUtf8(m.device).c_str());
+        Log(text);
+        if (ImGui::Selectable(text, m.device == ctx.activeMonitor)) actions.selectMonitor = m.device;
+    }
+}
+
 void DrawContent(MenuContext& ctx, MenuSection section, MenuActions& actions) {
     switch (section) {
         case MenuSection::Timing:
@@ -293,6 +306,7 @@ void DrawContent(MenuContext& ctx, MenuSection section, MenuActions& actions) {
             DrawProfiles(ctx, actions);
             break;
         case MenuSection::Display:
+            DrawDisplay(ctx, actions);
             break;
     }
 }
@@ -333,6 +347,10 @@ const char* SectionName(MenuSection section) {
 }
 
 }  // namespace
+
+float MenuScaleForDpi(unsigned dpi) {
+    return dpi / 96.0f;
+}
 
 bool ConfirmState::Request(const std::wstring& name) {
     if (pending == name) {

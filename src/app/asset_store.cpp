@@ -21,6 +21,7 @@ static bool IsImageName(const wchar_t* name) {
 void AssetStore::Init(std::wstring exeDir, ID3D11Device* device) {
     exeDir_ = std::move(exeDir);
     device_ = device;
+    thumbnails_.clear();
 }
 
 std::vector<std::wstring> AssetStore::List(const wchar_t* subdir) const {

@@ -16,12 +16,15 @@ public:
     void ShowStrobe(bool show);  // Safe from the worker thread.
     void ShowMenuLayer(bool show);
     bool Resize(int w, int h);  // Callers must release views of the menu swapchain first.
+    bool DeviceLost() const;
+    void Reset();  // Drops everything so Init can run again.
 
     ID3D11Device* Device() const { return device_.Get(); }
     ID3D11DeviceContext* Context() const { return context_.Get(); }
     IDXGISwapChain1* MenuSwapChain() const { return menuSwap_.Get(); }
 
 private:
+    bool Build(HWND hwnd, int w, int h);
     bool CreateSwapChain(int w, int h, Microsoft::WRL::ComPtr<IDXGISwapChain1>& out);
 
     Microsoft::WRL::ComPtr<ID3D11Device> device_;
@@ -35,4 +38,5 @@ private:
     Microsoft::WRL::ComPtr<IDCompositionVisual3> strobeVisual_;
     Microsoft::WRL::ComPtr<IDCompositionVisual3> menuVisual_;
     int w_ = 0, h_ = 0;
+    SRWLOCK visualLock_ = SRWLOCK_INIT;  // Keeps a flash from racing a device rebuild.
 };

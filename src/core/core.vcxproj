@@ -41,6 +41,7 @@
     <ClCompile Include="monitors.cpp" />
     <ClCompile Include="menu.cpp" />
     <ClCompile Include="menu_theme.cpp" />
+    <ClCompile Include="process_probe.cpp" />
     <ClCompile Include="..\..\third_party\imgui\imgui.cpp" />
     <ClCompile Include="..\..\third_party\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\..\third_party\imgui\imgui_tables.cpp" />

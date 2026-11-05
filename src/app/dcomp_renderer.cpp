@@ -16,6 +16,14 @@ bool OverlayRenderer::CreateSwapChain(int w, int h, ComPtr<IDXGISwapChain1>& out
 }
 
 bool OverlayRenderer::Init(HWND hwnd, int w, int h) {
+    AcquireSRWLockExclusive(&visualLock_);
+    const bool ok = Build(hwnd, w, h);
+    if (!ok) strobeVisual_.Reset();
+    ReleaseSRWLockExclusive(&visualLock_);
+    return ok;
+}
+
+bool OverlayRenderer::Build(HWND hwnd, int w, int h) {
     w_ = w;
     h_ = h;
     if (FAILED(D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
@@ -58,8 +66,12 @@ void OverlayRenderer::SetStrobeBitmap(const Bitmap& bitmap) {
 }
 
 void OverlayRenderer::ShowStrobe(bool show) {
-    strobeVisual_->SetVisible(show ? TRUE : FALSE);
-    dcomp_->Commit();
+    AcquireSRWLockShared(&visualLock_);
+    if (strobeVisual_) {
+        strobeVisual_->SetVisible(show ? TRUE : FALSE);
+        dcomp_->Commit();
+    }
+    ReleaseSRWLockShared(&visualLock_);
 }
 
 void OverlayRenderer::ShowMenuLayer(bool show) {
@@ -75,4 +87,23 @@ bool OverlayRenderer::Resize(int w, int h) {
     w_ = w;
     h_ = h;
     return true;
+}
+
+bool OverlayRenderer::DeviceLost() const {
+    return FAILED(device_->GetDeviceRemovedReason());
+}
+
+void OverlayRenderer::Reset() {
+    AcquireSRWLockExclusive(&visualLock_);
+    strobeVisual_.Reset();
+    menuVisual_.Reset();
+    root_.Reset();
+    target_.Reset();
+    dcomp_.Reset();
+    strobeSwap_.Reset();
+    menuSwap_.Reset();
+    factory_.Reset();
+    context_.Reset();
+    device_.Reset();
+    ReleaseSRWLockExclusive(&visualLock_);
 }

@@ -14,7 +14,7 @@
 // thumbnails. Paths going in and out are relative to the exe.
 class AssetStore {
 public:
-    void Init(std::wstring exeDir, ID3D11Device* device);
+    void Init(std::wstring exeDir, ID3D11Device* device);  // Also drops old thumbnails.
     std::vector<std::wstring> List(const wchar_t* subdir) const;
     bool Import(HWND owner, const wchar_t* subdir, std::wstring& outRelative);
     Bitmap BuildStrobe(const StrobeSettings& settings, int w, int h, std::wstring& warning);
