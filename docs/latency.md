@@ -18,3 +18,14 @@
 `dcomp` passes the gate: it beats `slwa` on median and p99 in both runs.
 
 Limit of this measure: `DwmFlush` shows when a composition pass ended, not that a given change was in it. A DirectComposition commit is asynchronous and could land one pass later, about 2.5 ms at this refresh rate (estimate). Phase 2's PresentMon runs don't settle this either, since they track the game's frames. Only a high-speed camera or a photodiode would.
+
+## Phase timing against the old build, 2026-11-05
+
+Old build (`bin\baseline`) against 0.10.0 on `DISPLAY1`, 100 frames on and 100 off at 400 Hz, 30 seconds each, no game running. 118 phases each. Measured drift past each phase's expected end, in milliseconds.
+
+| Build | Median | p95 | p99 | Max |
+| --- | --- | --- | --- | --- |
+| Old | 0.274 | 0.510 | 0.822 | 0.822 |
+| 0.10.0 | 0.260 | 0.520 | 1.042 | 1.042 |
+
+Passes the 0.25 ms gate. With 118 samples, p99 is the single worst phase, so that row is thin evidence.
