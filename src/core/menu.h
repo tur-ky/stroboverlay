@@ -27,6 +27,13 @@ struct MenuActions {
     std::wstring selectMonitor;
 };
 
+// A delete needs asking for twice, for the same name.
+class ConfirmState {
+public:
+    bool Request(const std::wstring& name);
+    std::wstring pending;
+};
+
 void ApplyMenuTheme(float dpiScale);
 void LoadMenuFonts(float dpiScale);
 MenuActions DrawMenu(MenuContext& ctx, MenuSection& section);

@@ -101,3 +101,12 @@ TEST(clamp_keeps_values_config_can_reload) {
     CHECK(t.onFrames == 0);
     CHECK(t.offFrames == 9999);
 }
+
+TEST(delete_needs_second_request_for_same_name) {
+    ConfirmState c;
+    CHECK(!c.Request(L"a"));
+    CHECK(c.Request(L"a"));
+    CHECK(!c.Request(L"a"));
+    CHECK(!c.Request(L"b"));
+    CHECK(c.Request(L"b"));
+}

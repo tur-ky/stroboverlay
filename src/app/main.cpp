@@ -46,6 +46,8 @@ private:
     void Save();
     void Recompose();
     void RefreshAssets();
+    void HandleProfiles(const MenuActions& actions);
+    std::wstring ProfilePath(const std::wstring& name) const;
     void ImportInto(const wchar_t* subdir, std::wstring& target);
 
     std::wstring exeDir_;
@@ -57,7 +59,7 @@ private:
     StrobeWorker worker_;
     MenuHost menu_;
     AssetStore assets_;
-    std::vector<std::wstring> images_, masks_;
+    std::vector<std::wstring> images_, masks_, profiles_;
     std::wstring warning_;
     bool menuOpen_ = false;
     bool quit_ = false;
@@ -142,6 +144,7 @@ void App::DrawMenuFrame() {
     ctx.detectedHz = monitor_.refreshHz;
     ctx.images = images_;
     ctx.masks = masks_;
+    ctx.profiles = profiles_;
     ctx.warning = warning_;
     ctx.thumbnail = [this](const std::wstring& file) -> void* { return assets_.Thumbnail(file); };
 
@@ -159,6 +162,7 @@ void App::DrawMenuFrame() {
         worker_.SetDurations(StrobeDurations(settings_.strobe, monitor_.refreshHz));
         if (NeedsRecompose(before, settings_.strobe)) Recompose();
     }
+    HandleProfiles(actions);
     if (actions.toggleStrobe) ToggleStrobe();
     if (actions.closeMenu) CloseMenu();
 }
@@ -172,6 +176,29 @@ void App::Recompose() {
 void App::RefreshAssets() {
     images_ = assets_.List(L"images");
     masks_ = assets_.List(L"masks");
+    profiles_ = ListProfiles(exeDir_ + L"profiles\\");
+}
+
+std::wstring App::ProfilePath(const std::wstring& name) const {
+    return exeDir_ + L"profiles\\" + name + L".ini";
+}
+
+void App::HandleProfiles(const MenuActions& actions) {
+    if (!actions.saveProfile.empty()) {
+        CreateDirectoryW((exeDir_ + L"profiles").c_str(), nullptr);
+        SaveProfile(ProfilePath(actions.saveProfile), settings_.strobe);
+        RefreshAssets();
+    }
+    if (!actions.deleteProfile.empty()) {
+        DeleteFileW(ProfilePath(actions.deleteProfile).c_str());
+        RefreshAssets();
+    }
+    if (!actions.loadProfile.empty()) {
+        settings_.strobe = LoadProfile(ProfilePath(actions.loadProfile), StrobeSettings{});
+        ClampTiming(settings_.strobe.timing);
+        worker_.SetDurations(StrobeDurations(settings_.strobe, monitor_.refreshHz));
+        Recompose();
+    }
 }
 
 void App::ImportInto(const wchar_t* subdir, std::wstring& target) {

@@ -219,6 +219,65 @@ void DrawMask(MenuContext& ctx, MenuActions& actions) {
     if (changed) actions.strobeSettingsChanged = true;
 }
 
+std::wstring ToWide(const char* utf8) {
+    wchar_t buf[128] = {0};
+    MultiByteToWideChar(CP_UTF8, 0, utf8, -1, buf, 127);
+    return buf;
+}
+
+std::string ToUtf8(const std::wstring& wide) {
+    char buf[512] = {0};
+    WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), -1, buf, 511, nullptr, nullptr);
+    return buf;
+}
+
+void DrawProfiles(MenuContext& ctx, MenuActions& actions) {
+    static std::wstring selected;
+    static char nameBuffer[65] = {0};
+    static ConfirmState confirm;
+    static bool nameRejected = false;
+
+    if (ctx.profiles.empty()) Hint("Save your current settings as a profile.");
+    const float listHeight = 170.0f * ImGui::GetStyle().FontScaleDpi;
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+    ImGui::BeginChild("list", ImVec2(0.0f, listHeight), ImGuiChildFlags_Borders);
+    ImGui::PopStyleVar();
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+    for (const std::wstring& name : ctx.profiles) {
+        const std::string label = ToUtf8(name);
+        Log(label.c_str());
+        if (ImGui::Selectable(label.c_str(), name == selected)) selected = name;
+    }
+    ImGui::PopStyleVar();
+    ImGui::EndChild();
+
+    if (LoggedButton("Load") && !selected.empty()) actions.loadProfile = selected;
+    ImGui::SameLine();
+    if (LoggedButton("Save") && !selected.empty()) actions.saveProfile = selected;
+    ImGui::SameLine();
+    const bool confirming = !selected.empty() && confirm.pending == selected;
+    if (LoggedButton(confirming ? "Confirm delete" : "Delete") && !selected.empty() &&
+        confirm.Request(selected)) {
+        actions.deleteProfile = selected;
+        selected.clear();
+    }
+
+    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x -
+                            78.0f * ImGui::GetStyle().FontScaleDpi);
+    ImGui::InputTextWithHint("##name", "aim warmup", nameBuffer, sizeof(nameBuffer));
+    ImGui::SameLine();
+    if (LoggedButton("Save as")) {
+        const std::wstring name = ToWide(nameBuffer);
+        nameRejected = !IsValidProfileName(name);
+        if (!nameRejected) {
+            actions.saveProfile = name;
+            selected = name;
+            nameBuffer[0] = 0;
+        }
+    }
+    if (nameRejected) Hint("Use a name without \\ / : * ? \" < > |");
+}
+
 void DrawContent(MenuContext& ctx, MenuSection section, MenuActions& actions) {
     switch (section) {
         case MenuSection::Timing:
@@ -231,6 +290,8 @@ void DrawContent(MenuContext& ctx, MenuSection section, MenuActions& actions) {
             DrawMask(ctx, actions);
             break;
         case MenuSection::Profiles:
+            DrawProfiles(ctx, actions);
+            break;
         case MenuSection::Display:
             break;
     }
@@ -272,6 +333,15 @@ const char* SectionName(MenuSection section) {
 }
 
 }  // namespace
+
+bool ConfirmState::Request(const std::wstring& name) {
+    if (pending == name) {
+        pending.clear();
+        return true;
+    }
+    pending = name;
+    return false;
+}
 
 void ClampTiming(TimingSettings& t) {
     t.onMs = std::clamp(t.onMs, 0.0, 99999.0);
