@@ -178,6 +178,7 @@ method=auto
 - Display change: rebuild swapchains and recompose.
 - Device lost, in window mode: rebuild once, then stop the strobe and warn.
 - Hotkey registration failure: warn in the menu instead of only `OutputDebugString`.
+- FACEIT client running: FACEIT stops the overlay from showing, per Patri's experience. Stroboverlay doesn't fight it and raises a desktop notification, since the menu may not appear either.
 
 ## Testing
 
