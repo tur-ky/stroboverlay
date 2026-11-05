@@ -99,7 +99,7 @@ The DLL unloads itself on panic, on exe exit, or on any init failure: it disable
 
 ### Method selection
 
-`method_select` is a pure function. Inputs: override, executable name, `-insecure` present, FACEIT client running, renderer, exclusive or borderless, and the measured table. Output: method plus a reason string the menu shows.
+`method_select` is a pure function. Inputs: override, executable name, `-insecure` present, FACEIT client running, exclusive or borderless, and the measured table. Output: method plus a reason string the menu shows.
 
 It runs when strobe starts, never in the background. `game_probe` gathers the inputs:
 
@@ -107,14 +107,14 @@ It runs when strobe starts, never in the background. `game_probe` gathers the in
 - Command line by `NtQueryInformationProcess` class 60, needing only limited query access.
 - FACEIT client by a process snapshot for `faceitclient.exe` and `faceitservice.exe`.
 - Exclusive fullscreen by `SHQueryUserNotificationState`.
-- Renderer by a module snapshot, taken only after the allowlist and `-insecure` checks pass. Finding `rendersystemvulkan.dll` loaded refuses injection.
+
+These checks stay outside the game and never open it for memory access. Renderer isn't probed from outside: a DLL that finds no DX11 device unloads itself through the normal failure path.
 
 Injection is allowed only when all of these hold:
 
 1. Executable is exactly `cs2.exe` or `FPSAimTrainer-Win64-Shipping.exe`.
 2. For `cs2.exe`, the command line contains `-insecure`.
 3. No FACEIT client process is running.
-4. Renderer is DX11.
 
 The override offers `Auto`, `Window` and `Injected`. `Injected` can't skip the guards.
 
