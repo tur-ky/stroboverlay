@@ -8,6 +8,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "core", "src\core\core.vcxpr
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "core_tests", "tests\core_tests.vcxproj", "{2E6A9C31-7D84-4F15-A6C2-91B0D3E47F22}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "flip_bench", "tools\flip_bench\flip_bench.vcxproj", "{5C07E3D2-1A9B-4B66-8F3E-C4D2A1906B33}"
+EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
         Debug|x64 = Debug|x64
@@ -26,5 +28,9 @@ Global
         {2E6A9C31-7D84-4F15-A6C2-91B0D3E47F22}.Debug|x64.Build.0 = Debug|x64
         {2E6A9C31-7D84-4F15-A6C2-91B0D3E47F22}.Release|x64.ActiveCfg = Release|x64
         {2E6A9C31-7D84-4F15-A6C2-91B0D3E47F22}.Release|x64.Build.0 = Release|x64
+        {5C07E3D2-1A9B-4B66-8F3E-C4D2A1906B33}.Debug|x64.ActiveCfg = Debug|x64
+        {5C07E3D2-1A9B-4B66-8F3E-C4D2A1906B33}.Debug|x64.Build.0 = Debug|x64
+        {5C07E3D2-1A9B-4B66-8F3E-C4D2A1906B33}.Release|x64.ActiveCfg = Release|x64
+        {5C07E3D2-1A9B-4B66-8F3E-C4D2A1906B33}.Release|x64.Build.0 = Release|x64
     EndGlobalSection
 EndGlobal
