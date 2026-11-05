@@ -1,3 +1,14 @@
 # simple-workflow plugin artifacts (local-only; delete entries to share via git)
 .simple-workflow/
 .simple-workflow
+
+# Local build and scratch output
+bin/
+x64/
+stroboverlay/x64/
+.vs/
+*.user
+.superpowers/
+repomix-output.xml
+latency_profile.csv
+desktop.ini
