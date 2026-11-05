@@ -2,8 +2,12 @@
 
 #include <cmath>
 
+// A shorter phase would round to a zero timer wait and spin the worker thread.
+static const double kMinPhaseMs = 0.1;
+
 static double Sanitize(double ms) {
-    return (std::isfinite(ms) && ms > 0.0) ? ms : 0.0;
+    if (!std::isfinite(ms) || ms <= 0.0) return 0.0;
+    return ms < kMinPhaseMs ? kMinPhaseMs : ms;
 }
 
 Durations ResolveDurations(const TimingSettings& t) {

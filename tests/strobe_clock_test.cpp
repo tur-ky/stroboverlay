@@ -46,3 +46,13 @@ TEST(both_zero_has_no_phases) {
     CHECK(HasPhases({0.0, 5.0}));
     CHECK(HasPhases({5.0, 0.0}));
 }
+
+TEST(tiny_durations_get_a_floor) {
+    TimingSettings t;
+    t.mode = TimingMode::Ms;
+    t.onMs = 0.00001;
+    t.offMs = 0.0;
+    Durations d = ResolveDurations(t);
+    CHECK_NEAR(d.strobeMs, 0.1, 1e-9);
+    CHECK(d.visibleMs == 0.0);
+}

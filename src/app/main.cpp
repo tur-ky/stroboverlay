@@ -46,6 +46,8 @@ private:
     void CloseMenu();
     void DrawMenuFrame();
     void HandleMessage(const MSG& msg);
+    void HandleHotkey(WPARAM id);
+    void Quit();
     void Save();
     void Recompose();
     void RefreshAssets();
@@ -55,7 +57,7 @@ private:
     void ApplyMonitor();
     void RefreshMonitors();
     void RegisterHotkeys();
-    void RecoverDevice();
+    bool RecoverDevice();
     bool HandleWindowMessage(UINT msg, WPARAM wp, LPARAM lp, LRESULT& result);
 
     std::wstring exeDir_;
@@ -71,6 +73,8 @@ private:
     std::wstring warning_, displayWarning_, hotkeyWarning_;
     bool menuOpen_ = false;
     bool quit_ = false;
+    bool importing_ = false;
+    bool canReopenMenu_ = true;
     HWND previousForeground_ = nullptr;
 };
 
@@ -114,12 +118,15 @@ void App::UpdateVisibility() {
 }
 
 void App::RegisterHotkeys() {
+    // Tied to the window, not the thread, so they still arrive while a modal
+    // dialog runs its own message loop.
     const auto reg = [this](int id, const Hotkey& key) {
-        return RegisterHotKey(nullptr, id, key.mods | MOD_NOREPEAT, key.vk) != 0;
+        return RegisterHotKey(window_.Handle(), id, key.mods | MOD_NOREPEAT, key.vk) != 0;
     };
     const bool toggleOk = reg(kToggle, settings_.toggle);
     const bool panicOk = reg(kPanic, settings_.panic);
     const bool showOk = reg(kShowGui, settings_.showGui);
+    canReopenMenu_ = panicOk || showOk;
     if (toggleOk && panicOk && showOk) return;
     hotkeyWarning_ = L"A hotkey is in use by another app. Change it in config.ini.";
     ShowDesktopNotice(window_.Handle(), L"Stroboverlay", hotkeyWarning_.c_str());
@@ -149,7 +156,8 @@ void App::OpenMenu() {
 }
 
 void App::CloseMenu() {
-    if (!menuOpen_) return;
+    // With no hotkey left to get back, the menu is the only way to stop the strobe.
+    if (!menuOpen_ || !canReopenMenu_) return;
     menuOpen_ = false;
     renderer_.ShowMenuLayer(false);
     window_.SetMenuInteractive(false);
@@ -161,7 +169,7 @@ void App::CloseMenu() {
 }
 
 void App::DrawMenuFrame() {
-    if (renderer_.DeviceLost()) RecoverDevice();
+    if (renderer_.DeviceLost() && !RecoverDevice()) return;
     MenuContext ctx;
     ctx.settings = &settings_;
     ctx.running = worker_.Running();
@@ -200,6 +208,7 @@ void App::DrawMenuFrame() {
     }
     if (actions.toggleStrobe) ToggleStrobe();
     if (actions.closeMenu) CloseMenu();
+    if (actions.quit) Quit();
 }
 
 void App::ApplyMonitor() {
@@ -233,7 +242,7 @@ void App::RefreshMonitors() {
     }
 }
 
-void App::RecoverDevice() {
+bool App::RecoverDevice() {
     const bool wasRunning = worker_.Running();
     worker_.SetRunning(false);
     DwmFlush();
@@ -248,17 +257,50 @@ void App::RecoverDevice() {
     if (!ok) {
         ShowDesktopNotice(window_.Handle(), L"Stroboverlay",
                           L"The graphics device failed, so the strobe has stopped.");
-        quit_ = true;
-        return;
+        Quit();
+        return false;
     }
     assets_.Init(exeDir_, renderer_.Device());
     Recompose();
     if (menuOpen_) renderer_.ShowMenuLayer(true);
     worker_.SetRunning(wasRunning);
+    return true;
+}
+
+void App::Quit() {
+    // Stop now rather than on the way out: a modal dialog may be holding the loop.
+    worker_.SetRunning(false);
+    window_.SetVisible(false);
+    quit_ = true;
+    PostQuitMessage(0);
+}
+
+void App::HandleHotkey(WPARAM id) {
+    if (id == kToggle) ToggleStrobe();
+    if (id == kPanic) Quit();
+    if (id == kShowGui && !importing_) {
+        if (menuOpen_) {
+            CloseMenu();
+        } else {
+            OpenMenu();
+        }
+    }
 }
 
 bool App::HandleWindowMessage(UINT msg, WPARAM wp, LPARAM lp, LRESULT& result) {
     switch (msg) {
+        case WM_HOTKEY:
+            HandleHotkey(wp);
+            return true;
+        case WM_CLOSE:
+            Quit();
+            return true;
+        case WM_TIMER:
+            if (!quit_ && renderer_.DeviceLost()) RecoverDevice();
+            return true;
+        case kOpenMenuMessage:
+            OpenMenu();
+            return true;
         case WM_DISPLAYCHANGE:
             RefreshMonitors();
             return true;
@@ -312,7 +354,10 @@ void App::HandleProfiles(const MenuActions& actions) {
 
 void App::ImportInto(const wchar_t* subdir, std::wstring& target) {
     std::wstring relative;
-    if (assets_.Import(window_.Handle(), subdir, relative)) {
+    importing_ = true;
+    const bool imported = assets_.Import(window_.Handle(), subdir, relative);
+    importing_ = false;
+    if (imported) {
         target = relative;
         RefreshAssets();
     }
@@ -321,16 +366,6 @@ void App::ImportInto(const wchar_t* subdir, std::wstring& target) {
 void App::HandleMessage(const MSG& msg) {
     if (msg.message == WM_QUIT) {
         quit_ = true;
-    } else if (msg.message == WM_HOTKEY) {
-        if (msg.wParam == kToggle) ToggleStrobe();
-        if (msg.wParam == kPanic) quit_ = true;
-        if (msg.wParam == kShowGui) {
-            if (menuOpen_) {
-                CloseMenu();
-            } else {
-                OpenMenu();
-            }
-        }
     } else {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
@@ -361,9 +396,9 @@ void App::Save() {
 void App::Shutdown() {
     worker_.Stop();
     Save();
-    UnregisterHotKey(nullptr, kToggle);
-    UnregisterHotKey(nullptr, kPanic);
-    UnregisterHotKey(nullptr, kShowGui);
+    UnregisterHotKey(window_.Handle(), kToggle);
+    UnregisterHotKey(window_.Handle(), kPanic);
+    UnregisterHotKey(window_.Handle(), kShowGui);
     menu_.Shutdown();
     RemoveDesktopNotice(window_.Handle());
     window_.Destroy();
@@ -373,6 +408,18 @@ void App::Shutdown() {
 
 int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+
+    // A second overlay would strobe with no hotkeys able to reach it.
+    HANDLE instanceLock = CreateMutexW(nullptr, TRUE, L"Local\\stroboverlay_single_instance");
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        HWND running = FindWindowW(L"StrobeOverlayClass", nullptr);
+        if (running) {
+            AllowSetForegroundWindow(ASFW_ANY);
+            PostMessageW(running, kOpenMenuMessage, 0, 0);
+        }
+        return 0;
+    }
+
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
     App app;
@@ -383,5 +430,6 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     int code = app.Run();
     app.Shutdown();
     CoUninitialize();
+    if (instanceLock) CloseHandle(instanceLock);
     return code;
 }

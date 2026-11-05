@@ -12,8 +12,8 @@ struct Bitmap {
 bool LoadImageStretched(const std::wstring& path, int w, int h, Bitmap& out);
 
 // Builds the premultiplied strobe bitmap. White mask pixels draw the fill, black
-// ones leave the game visible, and mask alpha always multiplies in. A fill image
-// or mask that isn't exactly w by h is ignored.
+// ones leave the game visible, and transparent ones count as black. Invert swaps
+// the result. A fill image or mask that isn't exactly w by h is ignored.
 Bitmap ComposeStrobe(uint32_t colorRgb, const Bitmap* fillImage, const Bitmap* mask, bool invert,
                      int w, int h);
 

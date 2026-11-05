@@ -22,7 +22,7 @@ struct MenuContext {
 };
 
 struct MenuActions {
-    bool strobeSettingsChanged = false, toggleStrobe = false, closeMenu = false;
+    bool strobeSettingsChanged = false, toggleStrobe = false, closeMenu = false, quit = false;
     bool importImage = false, importMask = false;
     std::wstring loadProfile, saveProfile, deleteProfile;
     std::wstring selectMonitor;

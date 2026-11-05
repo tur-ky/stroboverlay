@@ -106,8 +106,9 @@ Bitmap ComposeStrobe(uint32_t colorRgb, const Bitmap* fillImage, const Bitmap* m
         if (useMask) {
             const uint8_t* m = &mask->bgra[i * 4];
             int lum = (2126 * m[2] + 7152 * m[1] + 722 * m[0] + 5000) / 10000;
-            if (invert) lum = 255 - lum;
-            a = Mul255(Mul255(a, lum), m[3]);
+            int coverage = Mul255(lum, m[3]);
+            if (invert) coverage = 255 - coverage;
+            a = Mul255(a, coverage);
         }
 
         uint8_t* p = &out.bgra[i * 4];

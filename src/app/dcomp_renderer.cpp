@@ -37,6 +37,7 @@ bool OverlayRenderer::Build(HWND hwnd, int w, int h) {
     if (!CreateSwapChain(w, h, strobeSwap_) || !CreateSwapChain(w, h, menuSwap_)) return false;
 
     if (FAILED(DCompositionCreateDevice2(dxgi.Get(), IID_PPV_ARGS(&dcomp_)))) return false;
+    dcomp_.As(&dcompState_);
     if (FAILED(dcomp_->CreateTargetForHwnd(hwnd, TRUE, &target_))) return false;
 
     ComPtr<IDCompositionVisual2> strobe, menu;
@@ -90,7 +91,12 @@ bool OverlayRenderer::Resize(int w, int h) {
 }
 
 bool OverlayRenderer::DeviceLost() const {
-    return FAILED(device_->GetDeviceRemovedReason());
+    if (!device_) return true;
+    if (FAILED(device_->GetDeviceRemovedReason())) return true;
+    BOOL valid = TRUE;
+    // This one catches a DWM restart, which leaves the D3D device healthy.
+    if (dcompState_ && SUCCEEDED(dcompState_->CheckDeviceState(&valid))) return !valid;
+    return false;
 }
 
 void OverlayRenderer::Reset() {
@@ -99,6 +105,7 @@ void OverlayRenderer::Reset() {
     menuVisual_.Reset();
     root_.Reset();
     target_.Reset();
+    dcompState_.Reset();
     dcomp_.Reset();
     strobeSwap_.Reset();
     menuSwap_.Reset();

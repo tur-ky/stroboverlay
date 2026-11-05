@@ -67,7 +67,6 @@ LRESULT CALLBACK OverlayWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM l
     if (msg == WM_TIMER && wp == kTopmostTimer) {
         // Other topmost windows can land above us; flashes no longer reassert this.
         SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
-        return 0;
     }
     if (self && self->handler_) {
         LRESULT result = 0;

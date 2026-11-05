@@ -15,6 +15,7 @@ const float kPanelMargin = 24.0f;
 const float kRailWidth = 48.0f;
 const float kContentPadding = 16.0f;
 const float kTypedWidth = 96.0f;
+const float kQuitWidth = 64.0f;
 const float kThumbnailPixels = 72.0f;
 const float kColorPickerWidth = 220.0f;
 const double kSliderMaxMs = 2000.0;
@@ -409,9 +410,13 @@ MenuActions DrawMenu(MenuContext& ctx, MenuSection& section) {
         ImGui::PopTextWrapPos();
     }
     ImGui::SetCursorPosY(buttonY);
-    if (LoggedButton(ctx.running ? "Stop strobe" : "Start strobe", ImVec2(contentWidth, 0.0f))) {
+    const float quitWidth = kQuitWidth * scale;
+    const float startWidth = contentWidth - quitWidth - ImGui::GetStyle().ItemSpacing.x;
+    if (LoggedButton(ctx.running ? "Stop strobe" : "Start strobe", ImVec2(startWidth, 0.0f))) {
         actions.toggleStrobe = true;
     }
+    ImGui::SameLine();
+    if (LoggedButton("Quit", ImVec2(quitWidth, 0.0f))) actions.quit = true;
     ImGui::EndGroup();
     ImGui::EndChild();
     ImGui::End();

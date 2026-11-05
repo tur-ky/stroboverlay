@@ -110,3 +110,12 @@ TEST(delete_needs_second_request_for_same_name) {
     CHECK(!c.Request(L"b"));
     CHECK(c.Request(L"b"));
 }
+
+TEST(menu_offers_a_way_to_quit) {
+    Frame frame;
+    AppSettings settings;
+    MenuContext ctx = MakeContext(settings);
+    std::vector<std::string> labels;
+    frame.Draw(ctx, MenuSection::Display, &labels);
+    CHECK(Contains(labels, "Quit"));
+}

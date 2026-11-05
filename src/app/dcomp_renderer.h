@@ -33,6 +33,7 @@ private:
     Microsoft::WRL::ComPtr<IDXGISwapChain1> strobeSwap_;
     Microsoft::WRL::ComPtr<IDXGISwapChain1> menuSwap_;
     Microsoft::WRL::ComPtr<IDCompositionDesktopDevice> dcomp_;
+    Microsoft::WRL::ComPtr<IDCompositionDevice> dcompState_;  // May be null.
     Microsoft::WRL::ComPtr<IDCompositionTarget> target_;
     Microsoft::WRL::ComPtr<IDCompositionVisual2> root_;
     Microsoft::WRL::ComPtr<IDCompositionVisual3> strobeVisual_;

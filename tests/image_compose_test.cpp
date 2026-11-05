@@ -99,10 +99,12 @@ TEST(mask_alpha_multiplies_in) {
     CHECK(Px(b, 0, 0)[3] == 0);
 }
 
-TEST(transparent_mask_stays_clear_when_inverted) {
-    Bitmap mask = Solid(1, 1, 255, 255, 255, 0);
-    Bitmap b = ComposeStrobe(0x000000, nullptr, &mask, true, 1, 1);
-    CHECK(Px(b, 0, 0)[3] == 0);
+TEST(invert_swaps_a_cut_out_mask) {
+    Bitmap mask = Solid(2, 1, 255, 255, 255, 0);
+    SetPx(mask, 1, 0, 255, 255, 255, 255);
+    Bitmap b = ComposeStrobe(0x000000, nullptr, &mask, true, 2, 1);
+    CHECK(Px(b, 0, 0)[3] == 255);
+    CHECK(Px(b, 1, 0)[3] == 0);
 }
 
 TEST(rec709_luminance) {
