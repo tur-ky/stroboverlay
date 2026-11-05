@@ -40,6 +40,7 @@
     <ClCompile Include="settings_test.cpp" />
     <ClCompile Include="image_compose_test.cpp" />
     <ClCompile Include="monitors_test.cpp" />
+    <ClCompile Include="menu_test.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\src\core\core.vcxproj"><Project>{8D1F4B7A-2C63-4E2F-9B0D-3A7C5E1F6A10}</Project></ProjectReference>
